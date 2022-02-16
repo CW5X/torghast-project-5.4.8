@@ -416,7 +416,7 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
             // this is probably an error state, but we'll leave it
             // and hopefully recover on the next Update
             // we still need to copy our preffix
-            TC_LOG_ERROR("maps", "%u's Path Build failed: 0 length path", _sourceUnit->GetGUIDLow());
+            TC_LOG_ERROR("maps", "Path Build failed\n%s", _sourceUnit->GetDebugInfo().c_str());
         }
 
         TC_LOG_DEBUG("maps", "++  m_polyLength=%u prefixPolyLength=%u suffixPolyLength=%u \n", _polyLength, prefixPolyLength, suffixPolyLength);
@@ -922,11 +922,13 @@ dtStatus PathGenerator::FindSmoothPath(float const* startPos, float const* endPo
         dtPolyRef visited[MAX_VISIT_POLY];
 
         uint32 nvisited = 0;
-        _navMeshQuery->moveAlongSurface(polys[0], iterPos, moveTgt, &_filter, result, visited, (int*)&nvisited, MAX_VISIT_POLY);
+        if (dtStatusFailed(_navMeshQuery->moveAlongSurface(polys[0], iterPos, moveTgt, &_filter, result, visited, (int*)&nvisited, MAX_VISIT_POLY)))
+            return DT_FAILURE;
         npolys = FixupCorridor(polys, npolys, MAX_PATH_LENGTH, visited, nvisited);
         npolys = FixupShortcuts(polys, npolys);
 
-        _navMeshQuery->getPolyHeight(polys[0], result, &result[1]);
+        if (dtStatusFailed(_navMeshQuery->getPolyHeight(polys[0], result, &result[1])))
+            return DT_FAILURE;
         result[1] += 0.5f;
         dtVcopy(iterPos, result);
 
@@ -971,7 +973,8 @@ dtStatus PathGenerator::FindSmoothPath(float const* startPos, float const* endPo
                 }
                 // Move position at the other side of the off-mesh link.
                 dtVcopy(iterPos, endPos);
-                _navMeshQuery->getPolyHeight(polys[0], iterPos, &iterPos[1]);
+                if (dtStatusFailed(_navMeshQuery->getPolyHeight(polys[0], iterPos, &iterPos[1])))
+                    return DT_FAILURE;
                 iterPos[1] += 0.5f;
             }
         }
